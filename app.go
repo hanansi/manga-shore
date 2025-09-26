@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	baseUrl          = "https://api.mangadex.org"
-	uploadUrl        = "https://uploads.mangadex.org/covers"
+	baseUrl   = "https://api.mangadex.org"
+	uploadUrl = "https://uploads.mangadex.org"
+
 	mangaResultLimit = 10
 )
+
+// Manga Related Structs
 
 type SearchedMangas struct {
 	Data []MangaData `json:"data"`
@@ -29,7 +32,7 @@ type MangaData struct {
 type Manga struct {
 	ID         string             `json:"id"`
 	Attributes MangaAttributes    `json:"attributes"`
-	Author     AuthorAttributes   `json:"author"`
+	Authors    []AuthorAttributes `json:"authors"`
 	CoverArt   CoverArtAttributes `json:"coverArt"`
 }
 
@@ -73,6 +76,31 @@ type AuthorAttributes struct {
 
 type CoverArtAttributes struct {
 	FileName string `json:"fileName"`
+}
+
+// Chapter related structs
+type MangaChapters struct {
+	Data []Chapter `json:"data"`
+}
+
+type Chapter struct {
+	ID         string            `json:"id"`
+	Attributes ChapterAttributes `json:"attributes"`
+}
+
+type ChapterAttributes struct {
+	Number string `json:"chapter"`
+	Title  string `json:"title"`
+}
+
+type ChapterImagesMetadata struct {
+	BaseUrl string        `json:"baseUrl"`
+	Images  ChapterImages `json:"chapter"`
+}
+
+type ChapterImages struct {
+	Hash      string   `json:"hash"`
+	DataSaver []string `json:"dataSaver"`
 }
 
 // App struct
@@ -129,22 +157,25 @@ func (a *App) FetchMangaDetails(id string) Manga {
 		log.Println(err)
 	}
 
-	// FIXME - Fix multiple author values
-	mangaAuthor, mangaCoverArt := a.UnmarshalMangaRelationships(mangaDetails.Data.Relationships)
+	mangaAuthors, mangaCoverArt := a.UnmarshalMangaRelationships(mangaDetails.Data.Relationships)
 
-	return Manga{ID: mangaDetails.Data.ID, Attributes: mangaDetails.Data.Attributes, Author: mangaAuthor, CoverArt: mangaCoverArt}
+	return Manga{ID: mangaDetails.Data.ID, Attributes: mangaDetails.Data.Attributes, Authors: mangaAuthors, CoverArt: mangaCoverArt}
 }
 
-func (a *App) UnmarshalMangaRelationships(mangaRelationships []MangaRelationships) (AuthorAttributes, CoverArtAttributes) {
-	var mangaAuthor AuthorAttributes
+func (a *App) UnmarshalMangaRelationships(mangaRelationships []MangaRelationships) ([]AuthorAttributes, CoverArtAttributes) {
+	var mangaAuthors []AuthorAttributes
 	var mangaCoverArt CoverArtAttributes
 
 	for _, value := range mangaRelationships {
 		switch value.Type {
 		case "author":
+			var mangaAuthor AuthorAttributes
 			if err := json.Unmarshal(value.Attributes, &mangaAuthor); err != nil {
 				log.Println(err)
 			}
+
+			mangaAuthors = append(mangaAuthors, mangaAuthor)
+
 		case "cover_art":
 			if err := json.Unmarshal(value.Attributes, &mangaCoverArt); err != nil {
 				log.Println(err)
@@ -152,9 +183,81 @@ func (a *App) UnmarshalMangaRelationships(mangaRelationships []MangaRelationship
 		}
 	}
 
-	return mangaAuthor, mangaCoverArt
+	return mangaAuthors, mangaCoverArt
 }
 
 func (a *App) FormatCoverArtUrl(id string, fileName string) string {
-	return fmt.Sprintf("%s/%s/%s", uploadUrl, id, fileName)
+	return fmt.Sprintf("%s/covers/%s/%s", uploadUrl, id, fileName)
+}
+
+func (a *App) PrintHelper(anything any) {
+	fmt.Printf("%v\n", anything)
+}
+
+func (a *App) FetchMangaChapters(id string) MangaChapters {
+	var mangaChapters MangaChapters
+	offset := 0
+	hasMoreData := true
+
+	for hasMoreData {
+		formattedUrl := fmt.Sprintf("%s/manga/%s/feed?translatedLanguage[]=en&offset=%d", baseUrl, id, offset)
+		response, err := http.Get(formattedUrl)
+		if err != nil {
+			log.Println(err)
+		}
+
+		responseData, err := io.ReadAll(response.Body)
+		if err != nil {
+			log.Println(err)
+		}
+
+		var chapters MangaChapters
+		if err := json.Unmarshal(responseData, &chapters); err != nil {
+			log.Println(err)
+		}
+
+		if len(chapters.Data) > 0 {
+			mangaChapters.Data = append(mangaChapters.Data, chapters.Data...)
+			offset += 100
+		} else {
+			hasMoreData = false
+		}
+	}
+
+	return mangaChapters
+}
+
+func (a *App) FetchChapterImages(id string) []string {
+	var chapterImages ChapterImagesMetadata
+
+	chapterImagesUrl := fmt.Sprintf("%s/at-home/server/%s", baseUrl, id)
+	response, err := http.Get(chapterImagesUrl)
+	if err != nil {
+		log.Println(err)
+	}
+
+	responseData, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Println(err)
+	}
+
+	if err := json.Unmarshal(responseData, &chapterImages); err != nil {
+		log.Println(err)
+	}
+
+	imageUrls := a.FormatChapterImageUrls(chapterImages)
+
+	return imageUrls
+}
+
+func (a *App) FormatChapterImageUrls(chapterImages ChapterImagesMetadata) []string {
+	var imageUrls []string
+
+	for _, image := range chapterImages.Images.DataSaver {
+		formattedImageUrl := fmt.Sprintf("%s/data-saver/%s/%s", chapterImages.BaseUrl, chapterImages.Images.Hash, image)
+		fmt.Println(formattedImageUrl)
+		imageUrls = append(imageUrls, formattedImageUrl)
+	}
+
+	return imageUrls
 }

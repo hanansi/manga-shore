@@ -1,8 +1,8 @@
-interface SearchMangaFormProps {
+interface SearchBarProps {
     onSearch: (query: string) => void;
 }
 
-export default function SearchMangaForm({ onSearch }: SearchMangaFormProps) {
+export default function SearchBar({ onSearch }: SearchBarProps) {
     function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);

@@ -1,11 +1,15 @@
 import { Routes, Route } from "react-router-dom";
+
+// Pages
 import Library from "./pages/Library";
 import History from "./pages/History";
 import Browse from "./pages/Browse";
 import Settings from "./pages/Settings";
+import MangaDetails from "./pages/MangaDetails";
+import ChapterReader from "./pages/ChapterReader";
+
 import './App.css';
 
-// TODO - Main search page with search bar
 // TODO - Handle aborting for fetch so user cannot spam the search input
 // TODO - Fetch chapters
 // TODO - Have a back button that remembers the state of the search input
@@ -19,6 +23,8 @@ export default function App() {
                 <Route path="/history" element={<History />} />
                 <Route path="/search" element={<Browse />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/manga" element={<MangaDetails />} />
+                <Route path="/chapter" element={<ChapterReader />} />
             </Routes> 
         </>
     );

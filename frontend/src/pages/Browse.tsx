@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { FetchMangaByTitle, FetchMangaDetails } from "../../wailsjs/go/main/App";
+
+// Wails Bridge Code
 import { main } from "../../wailsjs/go/models";
+import { FetchMangaByTitle, FetchMangaDetails } from "../../wailsjs/go/main/App";
+
+// Layouts
+import MainLayout from "../layouts/MainLayout";
+
+// Components
+import SearchBar from "../components/SearchForm";
 import MangaGrid from "../components/MangaGrid";
-import NavBar from "../components/NavBar";
-import SearchMangaForm from "../components/SearchManga";
 
 export default function Browse() {
     const [mangas, setMangas] = useState<Array<main.Manga>>([]);
@@ -24,14 +30,13 @@ export default function Browse() {
     }
 
     return (
-        <div className="flex flex-row w-screen h-screen">
-            <NavBar />
-            <div className="bg-stone-900 flex-1 min-h-screen overflow-y-auto">
+        <MainLayout>
+            <div className="flex-1 min-h-screen overflow-y-auto">
                 <div className="flex flex-col items-center mt-3.5">
-                    <SearchMangaForm onSearch={searchManga} />
+                    <SearchBar onSearch={searchManga} />
                     { mangas && <MangaGrid mangas={mangas}/> }
                 </div>
             </div>
-        </div>
+        </MainLayout>
     );
 }

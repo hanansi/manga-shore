@@ -1,5 +1,9 @@
-import MangaCard from "./MangaCard";
+// Wails Bridge Code
 import { main } from "../../wailsjs/go/models";
+
+// Components
+import MangaCard from "./MangaCard";
+
 
 interface MangaGridProps {
     mangas: main.Manga[];
@@ -11,10 +15,7 @@ export default function MangaGrid({ mangas }: MangaGridProps) {
             {mangas.map(manga => 
                 <MangaCard
                     key={manga.id} 
-                    mangaId={manga.id}
-                    title={manga.attributes.title.en} 
-                    author={manga.author.name} 
-                    coverArt={manga.coverArt.fileName}
+                    manga={manga}
                 />)
             }
         </div>

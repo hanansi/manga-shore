@@ -12,6 +12,99 @@ export namespace main {
 	        this.name = source["name"];
 	    }
 	}
+	export class ChapterAttributes {
+	    chapter: string;
+	    title: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterAttributes(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chapter = source["chapter"];
+	        this.title = source["title"];
+	    }
+	}
+	export class Chapter {
+	    id: string;
+	    attributes: ChapterAttributes;
+	
+	    static createFrom(source: any = {}) {
+	        return new Chapter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.attributes = this.convertValues(source["attributes"], ChapterAttributes);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class ChapterImages {
+	    hash: string;
+	    dataSaver: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterImages(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hash = source["hash"];
+	        this.dataSaver = source["dataSaver"];
+	    }
+	}
+	export class ChapterImagesMetadata {
+	    baseUrl: string;
+	    chapter: ChapterImages;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChapterImagesMetadata(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.baseUrl = source["baseUrl"];
+	        this.chapter = this.convertValues(source["chapter"], ChapterImages);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CoverArtAttributes {
 	    fileName: string;
 	
@@ -83,7 +176,7 @@ export namespace main {
 	export class Manga {
 	    id: string;
 	    attributes: MangaAttributes;
-	    author: AuthorAttributes;
+	    authors: AuthorAttributes[];
 	    coverArt: CoverArtAttributes;
 	
 	    static createFrom(source: any = {}) {
@@ -94,7 +187,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.attributes = this.convertValues(source["attributes"], MangaAttributes);
-	        this.author = this.convertValues(source["author"], AuthorAttributes);
+	        this.authors = this.convertValues(source["authors"], AuthorAttributes);
 	        this.coverArt = this.convertValues(source["coverArt"], CoverArtAttributes);
 	    }
 	
@@ -117,6 +210,36 @@ export namespace main {
 		}
 	}
 	
+	export class MangaChapters {
+	    data: Chapter[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MangaChapters(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.data = this.convertValues(source["data"], Chapter);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class MangaData {
 	    id: string;
 	

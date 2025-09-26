@@ -1,6 +1,10 @@
 import { NavLink } from "react-router-dom";
-import NavItem from "./NavItem";
+
+// Lucide Icons
 import { Compass, Ellipsis, Library, History } from "lucide-react";
+
+// Components
+import NavItem from "./NavItem";
 
 export default function NavBar() {
     return (
