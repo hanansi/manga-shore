@@ -11,6 +11,9 @@ import MainLayout from "../layouts/MainLayout";
 // Components
 import ChapterList from "../components/ChapterList";
 
+// Utils
+import { formatAuthors } from "../utils/helper";
+
 
 interface MangaLinkState {
     manga: main.Manga;
@@ -48,7 +51,7 @@ export default function MangaDetails() {
                         )}
                         <div className="flex flex-col gap-1 items-start">
                             <p className="font-bold truncate w-full">{mangaTitle}</p>
-                            <p className="text-sm truncate w-full text-gray-400">{manga.authors.map(author => author.name).join(", ")}</p>
+                            <p className="text-sm truncate w-full text-gray-400">{formatAuthors(manga.authors)}</p>
                             <p className="w-10/12">{manga.attributes.description.en}</p>
                         </div>
                     </div>

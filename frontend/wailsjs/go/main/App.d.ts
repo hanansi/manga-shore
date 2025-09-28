@@ -14,6 +14,8 @@ export function FormatChapterImageUrls(arg1:main.ChapterImagesMetadata):Promise<
 
 export function FormatCoverArtUrl(arg1:string,arg2:string):Promise<string>;
 
+export function HttpRequest(arg1:string):Promise<Array<number>>;
+
 export function PrintHelper(arg1:any):Promise<void>;
 
 export function UnmarshalMangaRelationships(arg1:Array<main.MangaRelationships>):Promise<Array<main.AuthorAttributes>|main.CoverArtAttributes>;

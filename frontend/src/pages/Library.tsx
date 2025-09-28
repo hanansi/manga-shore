@@ -1,6 +1,8 @@
 // Layouts
 import MainLayout from "../layouts/MainLayout";
 
+// TODO - The library most have the information for each manga cached somewhere so that the data doesn't need the internet to load
+
 export default function Library() {
     return (
         <MainLayout>

@@ -3,7 +3,7 @@ import MainLayout from "../layouts/MainLayout";
 // TODO - Add statistics
 // TODO - Add about page
 // TODO - Reader options
-// TODO - Add apperance changer
+// TODO - Add apperance/theme changer
 // TODO - Add download options/clear cache
 
 export default function Library() {

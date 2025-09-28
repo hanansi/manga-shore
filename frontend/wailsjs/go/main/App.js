@@ -26,6 +26,10 @@ export function FormatCoverArtUrl(arg1, arg2) {
   return window['go']['main']['App']['FormatCoverArtUrl'](arg1, arg2);
 }
 
+export function HttpRequest(arg1) {
+  return window['go']['main']['App']['HttpRequest'](arg1);
+}
+
 export function PrintHelper(arg1) {
   return window['go']['main']['App']['PrintHelper'](arg1);
 }

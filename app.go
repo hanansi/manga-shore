@@ -3,22 +3,24 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 )
 
 const (
-	baseUrl   = "https://api.mangadex.org"
-	uploadUrl = "https://uploads.mangadex.org"
-
+	baseUrl          = "https://api.mangadex.org"
+	uploadUrl        = "https://uploads.mangadex.org"
 	mangaResultLimit = 10
 )
 
-// Manga Related Structs
+// TODO - Add better error handling for all functions
 
+// Manga Related Structs
 type SearchedMangas struct {
 	Data []MangaData `json:"data"`
 }
@@ -27,6 +29,7 @@ type MangaData struct {
 	ID string `json:"id"`
 }
 
+// TODO - Simplify the structure of this struct for easier access of all properties
 // Struct representing all the necessary information for a manga.
 // Json tags don't map to the mangadex api, it's used for coversion into a javascript model
 type Manga struct {
@@ -65,11 +68,6 @@ type MangaRelationships struct {
 	Attributes json.RawMessage `json:"attributes"`
 }
 
-// type MangaAuthorAndCoverArt struct {
-// 	Author   AuthorAttributes
-// 	CoverArt CoverArtAttributes
-// }
-
 type AuthorAttributes struct {
 	Name string `json:"name"`
 }
@@ -105,12 +103,18 @@ type ChapterImages struct {
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx        context.Context
+	httpClient *http.Client
+	cancelMap  map[string]context.CancelFunc
+	mu         sync.Mutex
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{
+		httpClient: &http.Client{},
+		cancelMap:  make(map[string]context.CancelFunc),
+	}
 }
 
 // startup is called when the app starts. The context is saved
@@ -119,22 +123,72 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-func (a *App) FetchMangaByTitle(title string) SearchedMangas {
-	formattedTitle := url.QueryEscape(title) // Properly formats title to a url query param
-	mangaUrl := fmt.Sprintf("%s/manga?title=%s&limit=%d", baseUrl, formattedTitle, mangaResultLimit)
-	response, err := http.Get(mangaUrl)
+func (a *App) HttpRequest(url string) ([]byte, error) {
+	a.mu.Lock()
+	// cancel only if the same URL is already running
+	if cancel, ok := a.cancelMap[url]; ok {
+		cancel()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	a.cancelMap[url] = cancel
+	a.mu.Unlock()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		log.Println(err)
+		return nil, fmt.Errorf("request build error: %w", err)
+	}
+
+	response, err := a.httpClient.Do(request)
+	if err != nil {
+		// If canceled, return a clean error
+		if errors.Is(err, context.Canceled) {
+			log.Println("request canceled:", url)
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("http error: %w", err)
+	}
+
+	defer response.Body.Close()
+
+	// optional: check HTTP status
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("unexpected status: %s", response.Status)
 	}
 
 	responseData, err := io.ReadAll(response.Body)
 	if err != nil {
-		log.Println(err)
+		return nil, fmt.Errorf("read error: %w", err)
+	}
+
+	// If canceled mid-read, body could be empty
+	if len(responseData) == 0 {
+		return nil, nil
+	}
+
+	return responseData, nil
+}
+
+// TODO - Expand the search to fetch the total results, not just the limit
+func (a *App) FetchMangaByTitle(title string) SearchedMangas {
+	formattedTitle := url.QueryEscape(title) // Properly formats title to a url query param
+	mangaUrl := fmt.Sprintf("%s/manga?title=%s&limit=%d", baseUrl, formattedTitle, mangaResultLimit)
+
+	responseData, err := a.HttpRequest(mangaUrl)
+	if err != nil {
+		log.Println("FetchMangaByTitle error:", err)
+		return SearchedMangas{}
+	}
+
+	if responseData == nil {
+		// request was canceled → return empty result silently
+		return SearchedMangas{}
 	}
 
 	var mangas SearchedMangas
 	if err := json.Unmarshal(responseData, &mangas); err != nil {
-		log.Println(err)
+		log.Println("json unmarshal error:", err)
 	}
 
 	return mangas
@@ -142,14 +196,16 @@ func (a *App) FetchMangaByTitle(title string) SearchedMangas {
 
 func (a *App) FetchMangaDetails(id string) Manga {
 	mangaUrl := fmt.Sprintf("%s/manga/%s?includes[]=author&includes[]=artist&includes[]=cover_art", baseUrl, id)
-	response, err := http.Get(mangaUrl)
+
+	responseData, err := a.HttpRequest(mangaUrl)
 	if err != nil {
-		log.Println(err)
+		log.Println("FetchMangaDetails error:", err)
+		return Manga{}
 	}
 
-	responseData, err := io.ReadAll(response.Body)
-	if err != nil {
-		log.Println(err)
+	if responseData == nil {
+		// request was canceled → return empty result silently
+		return Manga{}
 	}
 
 	var mangaDetails MangaDetails
@@ -201,6 +257,7 @@ func (a *App) FetchMangaChapters(id string) MangaChapters {
 
 	for hasMoreData {
 		formattedUrl := fmt.Sprintf("%s/manga/%s/feed?translatedLanguage[]=en&offset=%d", baseUrl, id, offset)
+		// TODO - Look how to implement the HttpRequest for this
 		response, err := http.Get(formattedUrl)
 		if err != nil {
 			log.Println(err)
@@ -210,6 +267,8 @@ func (a *App) FetchMangaChapters(id string) MangaChapters {
 		if err != nil {
 			log.Println(err)
 		}
+
+		defer response.Body.Close()
 
 		var chapters MangaChapters
 		if err := json.Unmarshal(responseData, &chapters); err != nil {
@@ -231,6 +290,7 @@ func (a *App) FetchChapterImages(id string) []string {
 	var chapterImages ChapterImagesMetadata
 
 	chapterImagesUrl := fmt.Sprintf("%s/at-home/server/%s", baseUrl, id)
+
 	response, err := http.Get(chapterImagesUrl)
 	if err != nil {
 		log.Println(err)
@@ -240,6 +300,8 @@ func (a *App) FetchChapterImages(id string) []string {
 	if err != nil {
 		log.Println(err)
 	}
+
+	defer response.Body.Close()
 
 	if err := json.Unmarshal(responseData, &chapterImages); err != nil {
 		log.Println(err)
@@ -255,7 +317,6 @@ func (a *App) FormatChapterImageUrls(chapterImages ChapterImagesMetadata) []stri
 
 	for _, image := range chapterImages.Images.DataSaver {
 		formattedImageUrl := fmt.Sprintf("%s/data-saver/%s/%s", chapterImages.BaseUrl, chapterImages.Images.Hash, image)
-		fmt.Println(formattedImageUrl)
 		imageUrls = append(imageUrls, formattedImageUrl)
 	}
 
