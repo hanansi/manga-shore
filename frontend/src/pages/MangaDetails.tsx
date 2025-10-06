@@ -14,6 +14,7 @@ import ChapterList from "../components/ChapterList";
 // Utils
 import { formatAuthors } from "../utils/helper";
 
+// TODO - Improve UI and add Skeleton Loading
 
 interface MangaLinkState {
     manga: main.Manga;
@@ -22,7 +23,7 @@ interface MangaLinkState {
 
 export default function MangaDetails() {
     const location = useLocation();
-    const state = location.state as MangaLinkState|| {};
+    const state = location.state as MangaLinkState || {};
     const {manga, coverArtUrl} = state;
 
     const [chapters, setChapters] = useState<main.MangaChapters>();
@@ -55,7 +56,7 @@ export default function MangaDetails() {
                             <p className="w-10/12">{manga.attributes.description.en}</p>
                         </div>
                     </div>
-                    {chapters && (<ChapterList chapters={chapters.data} />)}
+                    {chapters && (<ChapterList chapters={chapters.data} mangaTitle={mangaTitle} />)}
                 </div>
             </div>
         </MainLayout>
