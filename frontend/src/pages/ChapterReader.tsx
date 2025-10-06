@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useReducer, useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 // Wails Bridge Code
@@ -6,25 +6,92 @@ import { FetchChapterImages } from "../../wailsjs/go/main/App";
 import { main } from "../../wailsjs/go/models";
 
 // Components
-import BackButton from "../components/BackButton";
+import HeaderBar from "../components/HeaderBar";
 
 // TODO - Make the reader page have better UI/UX
-// TODO - Make the code within useEffect navigation less redundant
-// TODO - When the end of chapter is reached, go to next chapter
 // TODO - Add chapter completed boolean
+// TODO - When the end of chapter is reached, go to next chapter
 
 interface ChapterLinkState {
     chapter: main.Chapter;
+    mangaTitle: string;
 }
+
+// interface NavigationAction {
+//     type: ValidActions;
+//     payload?: Payload;
+// }
+
+// interface NavigationState {
+//     nextIndex: number;
+//     isVisible: boolean;
+// }
+
+// interface Payload {
+//     imageCount: number;
+// }
+
+type NavigationEvent = KeyboardEvent | MouseEvent;
+type ValidNavActions = "left" | "right" | "toggle";
+
+// function navigationReducer(state: NavigationState, action: NavigationAction): NavigationState {
+//     switch(action.type) {
+//         case "left":
+//             if (state.isVisible) return {...state, isVisible: false};
+//             if (state.nextIndex > 0) return {...state, nextIndex: state.nextIndex - 1};
+//             return state;
+
+//         case "right":
+//             if (state.isVisible) return {...state, isVisible: false};
+//             const MAX_IMAGE_INDEX = action.payload?.imageCount! - 1;
+//             if (state.nextIndex < MAX_IMAGE_INDEX ) return {...state, nextIndex: state.nextIndex + 1};
+//             return state;
+
+//         case "toggle":
+//             return {...state, isVisible: !state.isVisible};
+
+//         default:
+//             return state;
+//     }
+// }
+
+// let navigationInitialState: NavigationState = {
+//     nextIndex: 0,
+//     isVisible: false,
+// };
 
 export default function ChapterReader() {
     const location = useLocation();
     const state = location.state as ChapterLinkState || {};
-    const {chapter} = state;
+    const {chapter, mangaTitle} = state;
 
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [imageCount, setImageCount] = useState<number>(0);
+
     const [nextIndex, setNextIndex] = useState<number>(0);
+    const [isVisible, setIsVisbile] = useState<boolean>(false);
+
+    // const [navState, dispatch] = useReducer(navigationReducer, navigationInitialState);
+
+    // function handleNavigation(event: NavigationEvent) {
+    //     if (event instanceof KeyboardEvent) {
+    //         switch (event.code) {
+    //             case "ArrowLeft": dispatch({type: "left"}); break;
+    //             case "ArrowRight": dispatch({type: "right", payload: {imageCount: imageCount}}); break;
+    //             case "KeyV": dispatch({type: "toggle"}); break;
+    //             default: return;
+    //         }
+
+    //     } else if (event instanceof MouseEvent) {
+    //         const windowWidth = window.innerWidth;
+    //         const leftBoundaryX = windowWidth / 3;
+    //         const rightBoundaryX = leftBoundaryX * 2;
+
+    //         if (event.clientX > 0 && event.clientX <= leftBoundaryX) dispatch({type: "left"}); 
+    //         if (event.clientX > rightBoundaryX && event.clientX <= windowWidth ) dispatch({type: "right", payload: {imageCount: imageCount}});
+    //         if (event.clientX > leftBoundaryX && event.clientX <= rightBoundaryX) dispatch({type: "toggle"});
+    //     }
+    // }
 
     useEffect(() => {
         async function fetchImageUrls() {
@@ -37,63 +104,92 @@ export default function ChapterReader() {
     }, [chapter.id]);
 
     useEffect(() => {
-        function handleKeyPress(event: KeyboardEvent) {
-            switch (event.code) {
-                case "ArrowLeft":
-                    if (nextIndex > 0 ){
+        function handleNavigation(event: NavigationEvent) {
+            let navAction!: ValidNavActions;
+
+            if (event instanceof KeyboardEvent) {
+                switch (event.code) {
+                    case "ArrowLeft":
+                        navAction = "left";
+                        break;
+
+                    case "ArrowRight":
+                        navAction = "right";
+                        break;
+
+                    case "KeyV":
+                        navAction = "toggle";
+                        break;
+
+                    default:
+                        return;
+                }
+
+            } else if (event instanceof MouseEvent) {
+                const windowWidth = window.innerWidth;
+                const leftBoundaryX = windowWidth / 3;
+                const rightBoundaryX = leftBoundaryX * 2;
+
+                // Left region
+                if (event.clientX > 0 && event.clientX <= leftBoundaryX) {
+                    navAction = "left";
+
+                // Right region
+                } else if (event.clientX > rightBoundaryX && event.clientX <= windowWidth ) {
+                    navAction = "right";
+                
+                // Center region
+                } else if (event.clientX > leftBoundaryX && event.clientX <= rightBoundaryX) {
+                    navAction = "toggle"
+
+                }
+            }
+
+            switch (navAction) {
+                case "left":
+                    if (isVisible) setIsVisbile(false);
+
+                    if (nextIndex > 0) {
                         setNextIndex((prevIndex) => prevIndex - 1);
-                    } else {
-                        console.log("Beginning of chapter.")
                     }
+
                     break;
-                case "ArrowRight":
-                    if (nextIndex < imageCount - 1) {
+
+                case "right":
+                    if (isVisible) setIsVisbile(false);
+
+                    const MAX_IMAGE_INDEX = imageCount - 1;
+
+                    if (nextIndex < MAX_IMAGE_INDEX ) {
                         setNextIndex((prevIndex) => prevIndex + 1);
-                    } else {
-                        console.log("End of chapter.")
                     }
 
                     break;
-                default:
+
+                case "toggle":
+                    setIsVisbile(!isVisible);
                     break;
+
+                default:
+                    return;
             }
         }
 
-        function handleClick(event: MouseEvent) {
-            console.log(event.clientX);
-            const windowWidth = window.innerWidth;
-
-            const thirdWindowWidth = windowWidth / 3;
-
-            // Left side
-            if (event.clientX > 0 && event.clientX <= thirdWindowWidth) {
-                if (nextIndex > 0) {
-                    setNextIndex((prevIndex) => prevIndex - 1);
-                }
-
-            // Right side
-            } else if (event.clientX > thirdWindowWidth * 2 && event.clientX <= windowWidth ) {
-                if (nextIndex < imageCount - 1 ) {
-                    setNextIndex((prevIndex) => prevIndex + 1);
-                }
-            }
-        }
-
-        document.addEventListener("keydown", handleKeyPress);
-        document.addEventListener("click", handleClick);
+        document.addEventListener("keydown", handleNavigation);
+        document.addEventListener("click", handleNavigation);
 
         return () => {
-            document.removeEventListener("keydown", handleKeyPress);
-            document.removeEventListener("click", handleClick);
+            document.removeEventListener("keydown", handleNavigation);
+            document.removeEventListener("click", handleNavigation);
         }
-    }, [nextIndex, imageCount]);
+        // FIXME - Remember imageCount was removed from the dependency array
+    }, [nextIndex, isVisible]);
 
     return (
         <div className="flex flex-row justify-center items-center w-screen h-screen bg-zinc-900 overflow-y-auto">
-            <BackButton />
+            <HeaderBar chapter={chapter} isVisible={isVisible} mangaTitle={mangaTitle} />
             {imageUrls && (
-                // imageUrls.map((url) => <img src={url} className="w-28 aspect-[64/91] object-cover" />)
-                <img src={imageUrls[nextIndex]} className="h-screen object-contain select-none" />
+                <img src={imageUrls[nextIndex]} loading="lazy" className="h-screen object-contain select-none" />
             )}
         </div>
     );
