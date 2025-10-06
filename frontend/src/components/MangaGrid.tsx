@@ -13,13 +13,15 @@ interface MangaGridProps {
 }
 
 export default function MangaGrid({ mangas, mangaCount, isLoading }: MangaGridProps) {
+    if (isLoading) return ( 
+        <div className="grid grid-cols-4 gap-8 m-6 w-11/12">
+            {Array.from({length: mangaCount}).map((_, i) => <SkeletonMangaCard key={i} />)}
+        </div>
+    );
+
     return (
         <div className="grid grid-cols-4 gap-8 m-6 w-11/12">
-            {isLoading ? (
-                Array.from({length: mangaCount}).map((_, i) => <SkeletonMangaCard key={i} />)
-            ) : (
-            mangas.map((manga) => <MangaCard key={manga.id} manga={manga} />)
-            )}
+            {mangas.map((manga) => <MangaCard key={manga.id} manga={manga} />)}
         </div>
     );
 }
