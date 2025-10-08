@@ -10,11 +10,12 @@ import MainLayout from "../layouts/MainLayout";
 
 // Components
 import ChapterList from "../components/ChapterList";
+import Spinner from "../components/skeletons/Spinner";
 
 // Utils
 import { formatAuthors } from "../utils/helper";
 
-// TODO - Improve UI and add Skeleton Loading
+// TODO - Maybe change the skeleton loading to something else
 
 interface MangaLinkState {
     manga: main.Manga;
@@ -27,12 +28,16 @@ export default function MangaDetails() {
     const {manga, coverArtUrl} = state;
 
     const [chapters, setChapters] = useState<main.MangaChapters>();
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+
     const mangaTitle = manga.attributes.title.en;
 
     useEffect(() => {
         async function fetchChapters() {
+            setIsLoading(true);
             const mangaChapters = await FetchMangaChapters(manga.id);
             setChapters(mangaChapters);
+            setIsLoading(false);
         }
 
         fetchChapters();
@@ -56,7 +61,11 @@ export default function MangaDetails() {
                             <p className="w-10/12">{manga.attributes.description.en}</p>
                         </div>
                     </div>
-                    {chapters && (<ChapterList chapters={chapters.data} mangaTitle={mangaTitle} />)}
+                    {isLoading ? (
+                        <Spinner />
+                    ) : (
+                        chapters && (<ChapterList chapters={chapters.data} mangaTitle={mangaTitle} />)
+                    )}
                 </div>
             </div>
         </MainLayout>
